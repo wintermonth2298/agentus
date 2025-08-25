@@ -19,6 +19,8 @@ type Agent struct {
 	llm          LLM
 	toolRegistry map[string]Tool
 	systemPrompt string
+
+	debug bool
 }
 
 type AgentOption func(*Agent)
@@ -27,6 +29,7 @@ func NewAgent(llm LLM, opts ...AgentOption) *Agent {
 	agent := &Agent{
 		llm:          llm,
 		toolRegistry: make(map[string]Tool),
+		debug:        false,
 	}
 	for _, opt := range opts {
 		opt(agent)
@@ -48,6 +51,12 @@ func WithSystemPrompt(prompt string) AgentOption {
 	}
 }
 
+func WithDebug() AgentOption {
+	return func(a *Agent) {
+		a.debug = true
+	}
+}
+
 func WithTools(tools ...Tool) AgentOption {
 	return func(a *Agent) {
 		for _, t := range tools {
@@ -60,9 +69,11 @@ func WithTools(tools ...Tool) AgentOption {
 func (a *Agent) SendMessage(ctx context.Context, userMessage string) (string, error) {
 	history := a.initialHistory(userMessage)
 
-	defer func() {
-		a.printHistory(history)
-	}()
+	if a.debug {
+		defer func() {
+			a.printHistory(history)
+		}()
+	}
 
 	for range toolCallLimit {
 		resp, err := a.llm.Call(ctx, history)
