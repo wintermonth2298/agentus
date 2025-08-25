@@ -16,19 +16,36 @@ type Tool interface {
 }
 
 func MustNewTool[T any](
-	name, desc string,
+	name string,
+	desc string,
 	params []Param,
 	action func(T) (string, error),
 ) Tool {
+	tool, err := NewTool(name, desc, params, action)
+	if err != nil {
+		panic(err)
+	}
+
+	return tool
+}
+
+func NewTool[T any](
+	name string,
+	desc string,
+	params []Param,
+	action func(T) (string, error),
+) (Tool, error) {
 	tool := &genericTool[T]{
 		NameStr:    name,
 		DescStr:    desc,
 		ParamsList: params,
 		Action:     action,
 	}
-	mustValidateTool(tool)
+	if err := validateTool(tool); err != nil {
+		return nil, fmt.Errorf("validate tool: %w", err)
+	}
 
-	return tool
+	return tool, nil
 }
 
 type Param struct {
@@ -61,18 +78,20 @@ type genericTool[T any] struct {
 	Action     func(args T) (string, error)
 }
 
-func mustValidateTool[T any](tool *genericTool[T]) {
+func validateTool[T any](tool *genericTool[T]) error {
 	typ := reflect.TypeOf((*T)(nil)).Elem()
 	validNames := extractJSONNames(typ)
 
 	for _, p := range tool.ParamsList {
 		if !validNames[p.Name] {
-			panic(fmt.Sprintf(
+			return fmt.Errorf(
 				"Param.Name %q does not match any JSON field (tag or default) in type %T",
 				p.Name, *new(T),
-			))
+			)
 		}
 	}
+
+	return nil
 }
 
 func extractJSONNames(typ reflect.Type) map[string]bool {
