@@ -93,7 +93,7 @@ func mapToolSpecs(tool aiagent.Tool) openai.Tool {
 		Function: &openai.FunctionDefinition{
 			Name:        tool.Name(),
 			Description: tool.Desc(),
-			Strict:      true,
+			Strict:      false,
 			Parameters:  schema,
 		},
 	}
