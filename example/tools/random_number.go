@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"errors"
 	"math/rand/v2"
 	"strconv"
@@ -21,7 +22,7 @@ func NewRandomNumberGenerator() aiagent.Tool {
 			{Name: "min", Type: aiagent.ParamTypeInteger, Description: "Minimum value (inclusive)", Required: true},
 			{Name: "max", Type: aiagent.ParamTypeInteger, Description: "Maximum value (inclusive)", Required: true},
 		},
-		func(args RandomArgs) (string, error) {
+		func(_ context.Context, args RandomArgs) (string, error) {
 			if args.Min > args.Max {
 				return "", errors.New("min cannot be greater than max")
 			}

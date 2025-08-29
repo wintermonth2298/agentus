@@ -1,6 +1,7 @@
 package aiagent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -13,7 +14,7 @@ type NoArgs struct{}
 func NoParams() []Param { return []Param{} }
 
 type Tool interface {
-	Execute(args json.RawMessage) (string, error)
+	Execute(ctx context.Context, args json.RawMessage) (string, error)
 	Name() string
 	Desc() string
 	Params() []Param
@@ -23,7 +24,7 @@ func MustNewTool[T any](
 	name string,
 	desc string,
 	params []Param,
-	action func(T) (string, error),
+	action func(context.Context, T) (string, error),
 ) Tool {
 	tool, err := NewTool(name, desc, params, action)
 	if err != nil {
@@ -37,7 +38,7 @@ func NewTool[T any](
 	name string,
 	desc string,
 	params []Param,
-	action func(T) (string, error),
+	action func(context.Context, T) (string, error),
 ) (Tool, error) {
 	tool := &genericTool[T]{
 		NameStr:    name,
@@ -138,16 +139,16 @@ type genericTool[T any] struct {
 	NameStr    string
 	DescStr    string
 	ParamsList []Param
-	Action     func(args T) (string, error)
+	Action     func(ctx context.Context, args T) (string, error)
 }
 
 func (t *genericTool[T]) Name() string    { return t.NameStr }
 func (t *genericTool[T]) Desc() string    { return t.DescStr }
 func (t *genericTool[T]) Params() []Param { return t.ParamsList }
 
-func (t *genericTool[T]) Execute(raw json.RawMessage) (string, error) {
+func (t *genericTool[T]) Execute(ctx context.Context, raw json.RawMessage) (string, error) {
 	var args T
 	_ = json.Unmarshal(raw, &args)
 
-	return t.Action(args)
+	return t.Action(ctx, args)
 }

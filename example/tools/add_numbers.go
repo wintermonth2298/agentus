@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/wintermonth2298/agentus/aiagent"
@@ -19,7 +20,7 @@ func NewNumbersAdder() aiagent.Tool {
 			{Name: "a", Type: aiagent.ParamTypeInteger, Description: "First number to add", Required: true},
 			{Name: "b", Type: aiagent.ParamTypeInteger, Description: "Second number to add", Required: true},
 		},
-		func(args AddArgs) (string, error) {
+		func(_ context.Context, args AddArgs) (string, error) {
 			return strconv.Itoa(args.A + args.B), nil
 		},
 	)

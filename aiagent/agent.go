@@ -87,7 +87,7 @@ func (a *Agent) SendMessage(ctx context.Context, userMessage string) (string, er
 
 		// llm resp msgtype != MessageTypeAssistant => msgtype == MessageTypeToolCallRequest
 		for _, tcReq := range resp.MustToolCallRequests() {
-			tcResponse, errExec := a.executeTool(tcReq)
+			tcResponse, errExec := a.executeTool(ctx, tcReq)
 			if errExec != nil {
 				return "", errExec
 			}
@@ -98,11 +98,11 @@ func (a *Agent) SendMessage(ctx context.Context, userMessage string) (string, er
 	return "", errors.New("max tool call limit exceeded")
 }
 
-func (a *Agent) executeTool(req ToolCallRequest) (Message, error) {
+func (a *Agent) executeTool(ctx context.Context, req ToolCallRequest) (Message, error) {
 	tcExecutable := a.toolRegistry[req.Call.Name]
 
 	var content string
-	content, err := tcExecutable.Execute(req.Args)
+	content, err := tcExecutable.Execute(ctx, req.Args)
 	if err != nil {
 		return Message{}, fmt.Errorf("call tool %s: %w", req.Call.Name, err)
 	}
