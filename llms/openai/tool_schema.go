@@ -32,7 +32,7 @@ func getProperties(params []aiagent.Param) jsonToolSchema {
 }
 
 func getRequired(params []aiagent.Param) []string {
-	var required []string
+	required := make([]string, 0, 1)
 	for _, p := range params {
 		if p.Required {
 			required = append(required, p.Name)
@@ -75,7 +75,7 @@ func getNestedProperties(m map[string]aiagent.Param) jsonToolSchema {
 }
 
 func getNestedRequired(m map[string]aiagent.Param) []string {
-	var required []string
+	required := make([]string, 0, 1)
 	for name, sub := range m {
 		if sub.Required {
 			required = append(required, name)

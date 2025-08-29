@@ -8,6 +8,10 @@ import (
 	"unicode"
 )
 
+type NoArgs struct{}
+
+func NoParams() []Param { return []Param{} }
+
 type Tool interface {
 	Execute(args json.RawMessage) (string, error)
 	Name() string
@@ -71,13 +75,6 @@ const (
 	ParamTypeArray
 )
 
-type genericTool[T any] struct {
-	NameStr    string
-	DescStr    string
-	ParamsList []Param
-	Action     func(args T) (string, error)
-}
-
 func validateTool[T any](tool *genericTool[T]) error {
 	typ := reflect.TypeOf((*T)(nil)).Elem()
 	validNames := extractJSONNames(typ)
@@ -137,13 +134,20 @@ func defaultJSONName(fieldName string) string {
 	return string(runes)
 }
 
-func (g *genericTool[T]) Name() string    { return g.NameStr }
-func (g *genericTool[T]) Desc() string    { return g.DescStr }
-func (g *genericTool[T]) Params() []Param { return g.ParamsList }
+type genericTool[T any] struct {
+	NameStr    string
+	DescStr    string
+	ParamsList []Param
+	Action     func(args T) (string, error)
+}
 
-func (g *genericTool[T]) Execute(raw json.RawMessage) (string, error) {
+func (t *genericTool[T]) Name() string    { return t.NameStr }
+func (t *genericTool[T]) Desc() string    { return t.DescStr }
+func (t *genericTool[T]) Params() []Param { return t.ParamsList }
+
+func (t *genericTool[T]) Execute(raw json.RawMessage) (string, error) {
 	var args T
 	_ = json.Unmarshal(raw, &args)
 
-	return g.Action(args)
+	return t.Action(args)
 }
