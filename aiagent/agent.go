@@ -87,7 +87,10 @@ func (a *Agent) SendMessage(ctx context.Context, userMessage string) (string, er
 
 		// llm resp msgtype != MessageTypeAssistant => msgtype == MessageTypeToolCallRequest
 		for _, tcReq := range resp.MustToolCallRequests() {
-			tcResponse := a.executeTool(tcReq)
+			tcResponse, errExec := a.executeTool(tcReq)
+			if errExec != nil {
+				return "", errExec
+			}
 			history = append(history, tcResponse)
 		}
 	}
@@ -95,16 +98,16 @@ func (a *Agent) SendMessage(ctx context.Context, userMessage string) (string, er
 	return "", errors.New("max tool call limit exceeded")
 }
 
-func (a *Agent) executeTool(tcReq ToolCallRequest) Message {
-	tcExecutable := a.toolRegistry[tcReq.Call.Name]
+func (a *Agent) executeTool(req ToolCallRequest) (Message, error) {
+	tcExecutable := a.toolRegistry[req.Call.Name]
 
 	var content string
-	content, err := tcExecutable.Execute(tcReq.Args)
+	content, err := tcExecutable.Execute(req.Args)
 	if err != nil {
-		content = fmt.Sprintf("Error: tool %s failed: %s", tcReq.Call.Name, err)
+		return Message{}, fmt.Errorf("call tool %s: %w", req.Call.Name, err)
 	}
 
-	return NewToolCallResponseMessage(tcReq.Call.ID, tcReq.Call.Name, content)
+	return NewToolCallResponseMessage(req.Call.ID, req.Call.Name, content), nil
 }
 
 func (a *Agent) initialHistory(userMessage string) []Message {
