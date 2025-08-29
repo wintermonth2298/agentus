@@ -2,17 +2,50 @@ package aiagent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"unicode"
 )
 
+type NoArgs struct{}
+
+func NoParams() []Param { return []Param{} }
+
 type Tool interface {
 	Execute(args json.RawMessage) (string, error)
 	Name() string
 	Desc() string
 	Params() []Param
+}
+
+func MustNewToolNoArg(
+	name string,
+	desc string,
+	action func() (string, error),
+) Tool {
+	t, err := NewToolNoArg(name, desc, action)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+func NewToolNoArg(
+	name string,
+	desc string,
+	action func() (string, error),
+) (Tool, error) {
+	tool := &genericToolNoArg{
+		NameStr: name,
+		DescStr: desc,
+		Action:  action,
+	}
+	if err := validateNoArgTool(tool); err != nil {
+		return nil, fmt.Errorf("validate tool: %w", err)
+	}
+	return tool, nil
 }
 
 func MustNewTool[T any](
@@ -71,11 +104,11 @@ const (
 	ParamTypeArray
 )
 
-type genericTool[T any] struct {
-	NameStr    string
-	DescStr    string
-	ParamsList []Param
-	Action     func(args T) (string, error)
+func validateNoArgTool(tool *genericToolNoArg) error {
+	if tool == nil {
+		return errors.New("tool is nil")
+	}
+	return nil
 }
 
 func validateTool[T any](tool *genericTool[T]) error {
@@ -137,13 +170,33 @@ func defaultJSONName(fieldName string) string {
 	return string(runes)
 }
 
-func (g *genericTool[T]) Name() string    { return g.NameStr }
-func (g *genericTool[T]) Desc() string    { return g.DescStr }
-func (g *genericTool[T]) Params() []Param { return g.ParamsList }
+type genericTool[T any] struct {
+	NameStr    string
+	DescStr    string
+	ParamsList []Param
+	Action     func(args T) (string, error)
+}
 
-func (g *genericTool[T]) Execute(raw json.RawMessage) (string, error) {
+func (t *genericTool[T]) Name() string    { return t.NameStr }
+func (t *genericTool[T]) Desc() string    { return t.DescStr }
+func (t *genericTool[T]) Params() []Param { return t.ParamsList }
+
+func (t *genericTool[T]) Execute(raw json.RawMessage) (string, error) {
 	var args T
 	_ = json.Unmarshal(raw, &args)
 
-	return g.Action(args)
+	return t.Action(args)
+}
+
+type genericToolNoArg struct {
+	NameStr string
+	DescStr string
+	Action  func() (string, error)
+}
+
+func (t *genericToolNoArg) Name() string    { return t.NameStr }
+func (t *genericToolNoArg) Desc() string    { return t.DescStr }
+func (t *genericToolNoArg) Params() []Param { return nil }
+func (t *genericToolNoArg) Execute(_ json.RawMessage) (string, error) {
+	return t.Action()
 }

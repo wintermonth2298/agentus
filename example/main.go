@@ -31,10 +31,18 @@ func main() {
 		openai.NewLLM(client, openai.ModelGPT3Dot5Turbo0125),
 		aiagent.WithTool(tools.NewNumbersAdder()),
 		aiagent.WithTool(tools.NewRandomNumberGenerator()),
+		aiagent.WithTool(tools.NewTimeReporter()),
+		aiagent.WithDebug(),
 		aiagent.WithSystemPrompt("If required parameters are missing, ask the user before calling"),
 	)
 
-	resp, _ := agent.SendMessage(context.Background(), "Generate two random numbers and then add them.")
+	resp, err := agent.SendMessage(
+		context.Background(),
+		"Generate two random numbers, add them together, and also tell me the current time.",
+	)
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println(resp)
 }
