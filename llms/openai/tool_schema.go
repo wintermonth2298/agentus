@@ -10,78 +10,79 @@ import (
 type jsonToolSchema map[string]any
 
 func buildSchema(params []aiagent.Param) (json.RawMessage, error) {
-	requiredFields := getRequired(params)
-	properties := getProperties(params)
-
 	schema := jsonToolSchema{
 		"type":                 "object",
-		"properties":           properties,
-		"required":             requiredFields,
+		"properties":           propsFromSlice(params),
 		"additionalProperties": false,
+		"required":             requiredFromSlice(params),
 	}
 
 	return marshalWithIndent(schema)
 }
 
-func getProperties(params []aiagent.Param) jsonToolSchema {
+func propsFromSlice(params []aiagent.Param) jsonToolSchema {
 	props := make(jsonToolSchema, len(params))
 	for _, p := range params {
-		props[p.Name] = buildParamSchema(p)
+		props[p.Name] = toParamSchema(p)
 	}
+
 	return props
 }
 
-func getRequired(params []aiagent.Param) []string {
-	required := make([]string, 0, 1)
+func requiredFromSlice(params []aiagent.Param) []string {
+	req := make([]string, 0, len(params))
 	for _, p := range params {
 		if p.Required {
-			required = append(required, p.Name)
+			req = append(req, p.Name)
 		}
 	}
-	return required
+
+	return req
 }
 
-func buildParamSchema(p aiagent.Param) jsonToolSchema {
+func toParamSchema(p aiagent.Param) jsonToolSchema {
 	s := jsonToolSchema{
 		"type":        typeOf(p.Type),
 		"description": p.Description,
 	}
-
 	if len(p.Enum) > 0 {
 		s["enum"] = p.Enum
 	}
 
-	switch {
-	case p.Type == aiagent.ParamTypeArray && p.Items != nil:
-		s["items"] = buildParamSchema(*p.Items)
-	case p.Type == aiagent.ParamTypeObject && len(p.Properties) > 0:
-		nestedProps := getNestedProperties(p.Properties)
-		s["properties"] = nestedProps
-
-		if req := getNestedRequired(p.Properties); len(req) > 0 {
-			s["required"] = req
-		}
+	//nolint:exhaustive // no additional fields for scalar types
+	switch p.Type {
+	case aiagent.ParamTypeArray:
+		s["items"] = toParamSchema(*p.Items)
+	case aiagent.ParamTypeObject:
+		s["properties"] = propsFromMap(p.Properties)
+		s["additionalProperties"] = false
+		s["required"] = requiredFromMap(p.Properties)
 	}
 
 	return s
 }
 
-func getNestedProperties(m map[string]aiagent.Param) jsonToolSchema {
-	nested := make(jsonToolSchema, len(m))
-	for name, sub := range m {
-		nested[name] = buildParamSchema(sub)
+func propsFromMap(m map[string]aiagent.Param) jsonToolSchema {
+	if len(m) == 0 {
+		return jsonToolSchema{}
 	}
-	return nested
+	props := make(jsonToolSchema, len(m))
+	for name, sub := range m {
+		props[name] = toParamSchema(sub)
+	}
+
+	return props
 }
 
-func getNestedRequired(m map[string]aiagent.Param) []string {
-	required := make([]string, 0, 1)
+func requiredFromMap(m map[string]aiagent.Param) []string {
+	req := make([]string, 0, len(m))
 	for name, sub := range m {
 		if sub.Required {
-			required = append(required, name)
+			req = append(req, name)
 		}
 	}
-	return required
+
+	return req
 }
 
 func typeOf(pt aiagent.ParamType) string {
@@ -108,5 +109,6 @@ func marshalWithIndent(v any) (json.RawMessage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("marshal schema: %w", err)
 	}
+
 	return json.RawMessage(data), nil
 }
