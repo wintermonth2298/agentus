@@ -28,7 +28,7 @@ func main() {
 	client := newOpenAIClient(proxyAPIKey)
 
 	agent := aiagent.NewAgent(
-		openai.NewLLM(client, openai.ModelGPT3Dot5Turbo0125),
+		openai.NewLLM(client, openai.ModelGPT4o),
 		aiagent.WithTool(tools.NewNumbersAdder()),
 		aiagent.WithTool(tools.NewRandomNumberGenerator()),
 		aiagent.WithTool(tools.NewTimeReporter()),
@@ -38,7 +38,8 @@ func main() {
 
 	resp, err := agent.SendMessage(
 		context.Background(),
-		"Generate two random numbers, add them together, and also tell me the current time.",
+		"Generate two random numbers from 10 to 20, add them together, and also tell me the current time.",
+		aiagent.WithSystemPromptAppend("all output times are in brackets"),
 	)
 	if err != nil {
 		panic(err)

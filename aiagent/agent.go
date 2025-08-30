@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 const (
@@ -66,8 +67,26 @@ func WithTools(tools ...Tool) AgentOption {
 	}
 }
 
-func (a *Agent) SendMessage(ctx context.Context, userMessage string) (string, error) {
-	history := a.initialHistory(userMessage)
+type SendOption func(*sendOpts)
+
+type sendOpts struct {
+	appendSystemPrompt []string
+}
+
+func WithSystemPromptAppend(p string) SendOption {
+	return func(o *sendOpts) {
+		o.appendSystemPrompt = append(o.appendSystemPrompt, p)
+	}
+}
+
+func (a *Agent) SendMessage(ctx context.Context, userMessage string, opts ...SendOption) (string, error) {
+	var so sendOpts
+	for _, f := range opts {
+		f(&so)
+	}
+
+	systemPrompt := a.newSystemPrompt(a.systemPrompt, so.appendSystemPrompt)
+	history := a.initialHistory(userMessage, systemPrompt)
 
 	if a.debug {
 		defer func() {
@@ -110,14 +129,32 @@ func (a *Agent) executeTool(ctx context.Context, req ToolCallRequest) (Message, 
 	return NewToolCallResponseMessage(req.Call.ID, req.Call.Name, content), nil
 }
 
-func (a *Agent) initialHistory(userMessage string) []Message {
-	if a.systemPrompt == "" {
+func (a *Agent) initialHistory(userMessage string, sysPromt string) []Message {
+	if sysPromt == "" {
 		return []Message{NewUserMessage(userMessage)}
 	}
 	return []Message{
-		NewSystemMessage(a.systemPrompt),
+		NewSystemMessage(sysPromt),
 		NewUserMessage(userMessage),
 	}
+}
+
+func (a *Agent) newSystemPrompt(base string, appends []string) string {
+	parts := make([]string, 0, 1+len(appends))
+
+	if s := strings.TrimSpace(base); s != "" {
+		parts = append(parts, s)
+	}
+	for _, a := range appends {
+		if s := strings.TrimSpace(a); s != "" {
+			parts = append(parts, s)
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, "\n")
 }
 
 func (a *Agent) printHistory(history []Message) {
