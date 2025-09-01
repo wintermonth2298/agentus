@@ -33,13 +33,13 @@ func main() {
 		aiagent.WithTool(tools.NewRandomNumberGenerator()),
 		aiagent.WithTool(tools.NewTimeReporter()),
 		aiagent.WithDebug(),
-		aiagent.WithSystemPrompt("If required parameters are missing, ask the user before calling"),
 	)
 
 	resp, err := agent.SendMessage(
 		context.Background(),
 		"Generate two random numbers from 10 to 20, add them together, and also tell me the current time.",
-		aiagent.WithSystemPromptAppend("all output times are in brackets"),
+		aiagent.WithSystemPromptAppend("Wrap every time value you output in square brackets"),
+		aiagent.WithSystemPromptAppend("before each random number output ? sign"),
 	)
 	if err != nil {
 		panic(err)

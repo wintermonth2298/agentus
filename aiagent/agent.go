@@ -20,7 +20,6 @@ type LLM interface {
 type Agent struct {
 	llm          LLM
 	toolRegistry map[string]Tool
-	systemPrompt string
 
 	debug bool
 }
@@ -44,12 +43,6 @@ func WithTool(t Tool) AgentOption {
 	return func(a *Agent) {
 		a.toolRegistry[t.Name()] = t
 		a.llm.RegisterTool(t)
-	}
-}
-
-func WithSystemPrompt(prompt string) AgentOption {
-	return func(a *Agent) {
-		a.systemPrompt = prompt
 	}
 }
 
@@ -86,7 +79,7 @@ func (a *Agent) SendMessage(ctx context.Context, userMessage string, opts ...Sen
 		f(&so)
 	}
 
-	systemPrompt := a.newSystemPrompt(a.systemPrompt, so.appendSystemPrompt)
+	systemPrompt := a.newSystemPrompt(so.appendSystemPrompt)
 	history := a.initialHistory(userMessage, systemPrompt)
 
 	return a.Send(ctx, history)
@@ -146,12 +139,9 @@ func (a *Agent) initialHistory(userMessage string, sysPromt string) []Message {
 	}
 }
 
-func (a *Agent) newSystemPrompt(base string, appends []string) string {
-	parts := make([]string, 0, 1+len(appends))
+func (a *Agent) newSystemPrompt(appends []string) string {
+	parts := make([]string, 0, len(appends))
 
-	if s := strings.TrimSpace(base); s != "" {
-		parts = append(parts, s)
-	}
 	for _, a := range appends {
 		if s := strings.TrimSpace(a); s != "" {
 			parts = append(parts, s)
