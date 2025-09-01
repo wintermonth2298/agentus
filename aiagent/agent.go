@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -87,6 +88,12 @@ func (a *Agent) SendMessage(ctx context.Context, userMessage string, opts ...Sen
 
 	systemPrompt := a.newSystemPrompt(a.systemPrompt, so.appendSystemPrompt)
 	history := a.initialHistory(userMessage, systemPrompt)
+
+	return a.Send(ctx, history)
+}
+
+func (a *Agent) Send(ctx context.Context, chat []Message) (string, error) {
+	history := slices.Clone(chat)
 
 	if a.debug {
 		defer func() {
