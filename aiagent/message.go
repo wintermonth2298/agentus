@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/fatih/color"
 )
 
 var (
@@ -122,58 +124,40 @@ func (m *Message) Type() MessageType {
 }
 
 func (m *Message) String() string {
-	data, _ := m.marshalJSON()
-	return string(data)
-}
-
-func (m *Message) marshalJSON() ([]byte, error) {
-	type toolCall struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	}
-	type toolCallRequest struct {
-		Call toolCall        `json:"call"`
-		Args json.RawMessage `json:"args"`
-	}
-	type toolCallResponse struct {
-		Call   toolCall `json:"call"`
-		Result string   `json:"result"`
-	}
-	type alias struct {
-		Type             string            `json:"type"`
-		Text             *string           `json:"text,omitempty"`
-		ToolCallRequests []toolCallRequest `json:"tool_call_requests,omitempty"`
-		ToolCallResponse *toolCallResponse `json:"tool_call_response,omitempty"`
-	}
-
-	var reqs []toolCallRequest
-	for _, r := range m.toolCallRequests {
-		reqs = append(reqs, toolCallRequest{
-			Call: toolCall{
-				ID:   r.Call.ID,
-				Name: r.Call.Name,
-			},
-			Args: r.Args,
-		})
-	}
-
-	var resp *toolCallResponse
-	if m.toolCallResponse != nil {
-		resp = &toolCallResponse{
-			Call: toolCall{
-				ID:   m.toolCallResponse.Call.ID,
-				Name: m.toolCallResponse.Call.Name,
-			},
-			Result: m.toolCallResponse.Result,
+	var (
+		text      = ""
+		textLimit = 50
+	)
+	var (
+		magenta = color.New(color.FgYellow)
+		green   = color.New(color.FgGreen)
+		blue    = color.New(color.FgBlue)
+	)
+	switch m.messageType {
+	case MessageTypeAssistant:
+		text = "\n" + *m.text
+	case MessageTypeSystem:
+		text = *m.text
+		if len(text) > textLimit {
+			text = text[:textLimit] + "..."
+		}
+	case MessageTypeToolRequest:
+		for _, req := range m.toolCallRequests {
+			text += fmt.Sprintf("\n\t%s(%s)", req.Call.Name, string(req.Args))
+		}
+		text = green.Sprint(text)
+	case MessageTypeToolResponse:
+		text += m.toolCallResponse.Result
+		text = blue.Sprint(text)
+	case MessageTypeUser:
+		text = *m.text
+		if len(text) > textLimit {
+			text = text[:textLimit] + "..."
 		}
 	}
 
-	return json.Marshal(alias{
-		Type:             m.Type().String(),
-		Text:             m.text,
-		ToolCallRequests: reqs,
-		ToolCallResponse: resp,
-	})
+	coloredMsgType := magenta.Sprint(m.messageType.String())
+	return fmt.Sprintf("%s: %s", coloredMsgType, text)
 }
 
 type ToolCall struct {
