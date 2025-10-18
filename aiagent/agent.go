@@ -91,6 +91,7 @@ func (a *Agent) Send(ctx context.Context, chat []Message) (string, error) {
 	if a.debug {
 		defer func() {
 			a.printHistory(history)
+			fmt.Println()
 		}()
 	}
 
